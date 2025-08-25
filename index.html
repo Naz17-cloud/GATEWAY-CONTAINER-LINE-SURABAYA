@@ -88,12 +88,12 @@
     <div class="company" id="company">PT NAMA PERUSAHAAN</div>
     <div class="table" id="table">
       <span>NOMOR MEJA</span>
-      <div class="table-number">01</div>
+      <div class="table-number" id="table-number">--</div>
     </div>
     <div class="team">Team Event</div>
   </div>
 
-  <!-- Firebase lama tetap -->
+  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -112,47 +112,53 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const company = decodeURIComponent(urlParams.get('company') || 'PT NAMA PERUSAHAAN');
-    const table = decodeURIComponent(urlParams.get('table') || '01');
+    const companyEl = document.getElementById('company');
+    const tableNumEl = document.getElementById('table-number');
 
-    document.getElementById('company').textContent = company.toUpperCase();
-    document.querySelector('.table-number').textContent = table;
+    async function loadCompanies() {
+      try {
+        const res = await fetch('companies.json', { cache: 'no-store' });
+        if (!res.ok) return {};
+        return await res.json();
+      } catch { return {}; }
+    }
 
-    const timestamp = new Date().toISOString();
-    set(ref(db, 'scanned'), {
-      company: company,
-      table: table,
-      time: timestamp
-    });
+    function normalizeCompany(name) {
+      return (name || '').trim().toUpperCase();
+    }
 
-    const formURL = "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
-    const formData = new FormData();
-    formData.append("entry.712340243", company);
-    formData.append("entry.1805472999", table);
+    function show(company, table) {
+      companyEl.textContent = normalizeCompany(company) || 'PT NAMA PERUSAHAAN';
+      tableNumEl.textContent = table || '--';
+    }
 
-    fetch(formURL, {
-      method: "POST",
-      mode: "no-cors",
-      body: formData
-    });
-  </script>
+    function logScan(company, table) {
+      const id = Date.now(); // unik
+      set(ref(db, 'scanned/' + id), {
+        company: normalizeCompany(company),
+        table,
+        time: new Date().toISOString()
+      });
+    }
 
-  <!-- 🔹 Script baru untuk tangkap input scanner eksternal -->
-  <script>
-    document.addEventListener("keydown", function(e) {
-      if (e.key === "Enter") {
-        let scanned = window.currentScan || "";
-        if (scanned.trim() !== "") {
-          // Simpan hasil scan ke localStorage → dibaca display.html
-          localStorage.setItem("lastScan", scanned.trim());
-          console.log("QR Scanned:", scanned.trim());
-          window.currentScan = "";
-        }
-      } else {
-        window.currentScan = (window.currentScan || "") + e.key;
+    async function handleParamsOrFallback() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let company = decodeURIComponent(urlParams.get('company') || '').trim();
+      let table = decodeURIComponent(urlParams.get('table') || '').trim();
+
+      if (company && !table) {
+        const companies = await loadCompanies();
+        const record = companies[normalizeCompany(company)];
+        if (record && record.table) table = String(record.table).padStart(2, '0');
       }
-    });
+
+      if (company && table) {
+        show(company, table);
+        logScan(company, table);
+      }
+    }
+
+    handleParamsOrFallback();
   </script>
 </body>
 </html>
