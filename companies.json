@@ -1,0 +1,14 @@
+{
+  "SUNGGONG LOGISTICS": {
+    "table": "VIP",
+    "representatives": ["Joko", "Widodo"]
+  },
+  "FORIN LOGISTICS": {
+    "table": "10",
+    "representatives": ["Prabowo", "Subiantoro"]
+  },
+  "PUMA SUB": {
+    "table": "23",
+    "representatives": ["Intans", "Segara"]
+  }
+}
