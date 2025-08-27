@@ -4,15 +4,99 @@
   <meta charset="UTF-8">
   <title>Display - Customer Gathering</title>
   <style>
-    body, .overlay, .content, .welcome, .title, .company, .table-box, .table-number, .watermark {
-      /* ... (semua CSS seperti sebelumnya) ... */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Georgia', serif;
+      background: url('background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+
+    .content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .welcome {
+      font-size: 40px;
+      font-weight: bold;
+      color: #FFD700;
+      margin-bottom: 20px;
+      display: inline-block;
+      white-space: pre-line;
+      background: linear-gradient(90deg, #FFD700, #ffffff, #FFD700);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-size: 200% auto;
+      animation: shine 5s linear infinite;
+    }
+
+    @keyframes shine {
+      0% { background-position: 200% center; }
+      100% { background-position: -200% center; }
+    }
+
+    .title {
+      font-size: 34px;
+      font-style: italic;
+      color: #58caed;
+      margin-bottom: 40px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    }
+
+    .company {
+      font-size: 40px;
+      color: #98c732;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+    }
+
+    .table-box {
+      display: inline-block;
+      padding: 20px 40px;
+      border: 4px solid gold;
+      border-radius: 15px;
+      box-shadow: 0 0 15px gold;
+      background: rgba(0,0,0,0.5);
+    }
+
+    .table-number {
+      font-size: 70px;
+      color: #FFD700;
+      font-weight: bold;
+    }
+
+    .watermark {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      color: white;
+      opacity: 0.5;
     }
   </style>
 </head>
 <body>
   <div class="overlay"></div>
   <div class="content">
-    <div class="welcome">SELAMAT DATANG DI CUSTOMER GATHERING
+    <div class="welcome">SELAMAT DATANG DI CUSTOMER GATHERING 
 GATEWAY CONTAINER LINE SURABAYA 2025</div>
     <div class="title">"Navigating The Turbulence, Cruising The Opportunities"</div>
     <div class="company" id="companyName">Nama Perusahaan</div>
@@ -22,6 +106,7 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
   </div>
   <div class="watermark">Tim Bjir</div>
 
+  <!-- ===== Real-time 2 Device (Firebase Listener) + Submit ke Google Form ===== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -61,7 +146,7 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
     onValue(scannedRef, (snap) => {
       const data = snap.val() || {};
       const company = data.company || "Nama Perusahaan";
-      const table   = data.table   || "0";
+      const table = data.table || "0";
 
       updateDisplay(company, table);
 
@@ -81,7 +166,7 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       }
     });
 
-    // Fallback: input scanner langsung via keyboard/paste
+    // === Fallback untuk scanner yang input langsung ===
     let buffer = "";
     const allowed = /[0-9A-Za-zÀ-ž .,_\-@#:/?&=%+]/;
     document.addEventListener("keydown", (e) => {
@@ -108,7 +193,7 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       let qs = "";
 
       try {
-        const maybeUrl = raw.includes("://") ? raw : ("http://" + raw);
+        const maybeUrl = raw.match(/^[a-zA-Z]+:\/\//) ? raw : ("http://" + raw);
         const u = new URL(maybeUrl);
         qs = u.search || "";
       } catch {}
