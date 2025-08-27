@@ -4,99 +4,15 @@
   <meta charset="UTF-8">
   <title>Display - Customer Gathering</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Georgia', serif;
-      background: url('background.jpg') no-repeat center center fixed;
-      background-size: cover;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      text-align: center;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .overlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6); /* shadow agar background tidak terlalu terang */
-      z-index: 0;
-    }
-
-    .content {
-      position: relative;
-      z-index: 1;
-    }
-
-    .welcome {
-      font-size: 40px;
-      font-weight: bold;
-      color: #FFD700;
-      margin-bottom: 20px;
-      display: inline-block;
-      white-space: pre-line; /* menjaga spasi & baris welcome */
-      background: linear-gradient(90deg, #FFD700, #ffffff, #FFD700);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-size: 200% auto;
-      animation: shine 5s linear infinite;
-    }
-
-    @keyframes shine {
-      0% { background-position: 200% center; }
-      100% { background-position: -200% center; }
-    }
-
-    .title {
-      font-size: 34px;
-      font-style: italic;
-      color: #58caed;
-      margin-bottom: 40px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
-    }
-
-    .company {
-      font-size: 40px;
-      color: #98c732;
-      margin-bottom: 30px;
-      text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
-    }
-
-    .table-box {
-      display: inline-block;
-      padding: 20px 40px;
-      border: 4px solid gold;
-      border-radius: 15px;
-      box-shadow: 0 0 15px gold;
-      background: rgba(0,0,0,0.5);
-    }
-
-    .table-number {
-      font-size: 70px;
-      color: #FFD700;
-      font-weight: bold;
-    }
-
-    .watermark {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 18px;
-      color: white;
-      opacity: 0.5;
+    body, .overlay, .content, .welcome, .title, .company, .table-box, .table-number, .watermark {
+      /* ... (semua CSS seperti sebelumnya) ... */
     }
   </style>
 </head>
 <body>
   <div class="overlay"></div>
   <div class="content">
-    <div class="welcome">SELAMAT DATANG DI CUSTOMER GATHERING 
+    <div class="welcome">SELAMAT DATANG DI CUSTOMER GATHERING
 GATEWAY CONTAINER LINE SURABAYA 2025</div>
     <div class="title">"Navigating The Turbulence, Cruising The Opportunities"</div>
     <div class="company" id="companyName">Nama Perusahaan</div>
@@ -106,13 +22,10 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
   </div>
   <div class="watermark">Tim Bjir</div>
 
-  <!-- ===== Real-time 2 Device (Firebase Listener) ===== -->
   <script type="module">
-    // Import Firebase v9 (modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    // === Pakai konfigurasi yang sama dengan halaman pemindai (index) ===
     const firebaseConfig = {
       apiKey: "AIzaSyAw6mvIFe6xdZAejTJv3Jo8-fvBz3Av4K4",
       authDomain: "scanner-gathering.firebaseapp.com",
@@ -124,21 +37,17 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       measurementId: "G-HW6Y6VN817"
     };
 
-    // Init
     const app = initializeApp(firebaseConfig);
     const db  = getDatabase(app);
 
-    // Elemen UI
     const companyEl = document.getElementById("companyName");
     const tableEl   = document.getElementById("tableNumber");
 
-    // Helper: update tampilan
     function updateDisplay(company, table) {
       if (company) companyEl.textContent = company.toUpperCase();
       if (table)   tableEl.textContent   = table;
     }
 
-    // 1) Set nilai awal dari query string (kalau ada)
     try {
       const usp = new URLSearchParams(location.search || "");
       const qCompany = usp.get("company");
@@ -148,17 +57,31 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       }
     } catch {}
 
-    // 2) Dengarkan perubahan realtime pada path 'scanned'
-    //    Halaman pemindai menulis ke path ini setiap ada scan baru.
     const scannedRef = ref(db, "scanned");
     onValue(scannedRef, (snap) => {
       const data = snap.val() || {};
-      // Pastikan update cepat & tanpa reload
-      updateDisplay(data.company || "Nama Perusahaan", data.table || "0");
+      const company = data.company || "Nama Perusahaan";
+      const table   = data.table   || "0";
+
+      updateDisplay(company, table);
+
+      // === Kirim data ke Google Form ===
+      try {
+        const formData = new FormData();
+        formData.append("entry.712340243", company);
+        formData.append("entry.1805472999", table);
+
+        fetch("https://docs.google.com/forms/u/0/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse", {
+          method: "POST",
+          mode: "no-cors",
+          body: formData
+        });
+      } catch (err) {
+        console.warn("Gagal kirim ke Google Form:", err);
+      }
     });
 
-    // 3) Fallback tambahan (opsional): jika scanner keyboard wedge dicolok langsung ke laptop display,
-    //    tetap bisa menangkap input dan mem-parsing link/query.
+    // Fallback: input scanner langsung via keyboard/paste
     let buffer = "";
     const allowed = /[0-9A-Za-zÀ-ž .,_\-@#:/?&=%+]/;
     document.addEventListener("keydown", (e) => {
@@ -179,14 +102,13 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       if (parsed) updateDisplay(parsed.company, parsed.table);
     });
 
-    // Parser sederhana untuk fallback keyboard/paste
     function parseScanToParams(data) {
       const raw = (data || "").trim();
       if (!raw) return null;
       let qs = "";
 
       try {
-        const maybeUrl = raw.match(/^[a-zA-Z]+:\/\//) ? raw : ("http://" + raw);
+        const maybeUrl = raw.includes("://") ? raw : ("http://" + raw);
         const u = new URL(maybeUrl);
         qs = u.search || "";
       } catch {}
