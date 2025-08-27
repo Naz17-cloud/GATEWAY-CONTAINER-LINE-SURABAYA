@@ -19,78 +19,20 @@
       overflow: hidden;
       position: relative;
     }
-
-    .overlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6);
-      z-index: 0;
-    }
-
-    .content {
-      position: relative;
-      z-index: 1;
-    }
-
+    .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); z-index:0; }
+    .content { position: relative; z-index:1; }
     .welcome {
-      font-size: 40px;
-      font-weight: bold;
-      color: #FFD700;
-      margin-bottom: 20px;
-      display: inline-block;
-      white-space: pre-line;
+      font-size: 40px; font-weight: bold; color: #FFD700; margin-bottom: 20px; display:inline-block; white-space: pre-line;
       background: linear-gradient(90deg, #FFD700, #ffffff, #FFD700);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-size: 200% auto;
-      animation: shine 5s linear infinite;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-size: 200% auto; animation: shine 5s linear infinite;
     }
-
-    @keyframes shine {
-      0% { background-position: 200% center; }
-      100% { background-position: -200% center; }
-    }
-
-    .title {
-      font-size: 34px;
-      font-style: italic;
-      color: #58caed;
-      margin-bottom: 40px;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
-    }
-
-    .company {
-      font-size: 40px;
-      color: #98c732;
-      margin-bottom: 30px;
-      text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
-    }
-
-    .table-box {
-      display: inline-block;
-      padding: 20px 40px;
-      border: 4px solid gold;
-      border-radius: 15px;
-      box-shadow: 0 0 15px gold;
-      background: rgba(0,0,0,0.5);
-    }
-
-    .table-number {
-      font-size: 70px;
-      color: #FFD700;
-      font-weight: bold;
-    }
-
-    .watermark {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 18px;
-      color: white;
-      opacity: 0.5;
-    }
+    @keyframes shine { 0%{background-position:200% center;} 100%{background-position:-200% center;} }
+    .title { font-size: 34px; font-style: italic; color: #58caed; margin-bottom: 40px; text-shadow: 2px 2px 4px rgba(0,0,0,0.7); }
+    .company { font-size: 40px; color: #98c732; margin-bottom: 30px; text-shadow: 2px 2px 6px rgba(0,0,0,0.7); }
+    .table-box { display:inline-block; padding:20px 40px; border:4px solid gold; border-radius:15px; box-shadow:0 0 15px gold; background: rgba(0,0,0,0.5); }
+    .table-number { font-size: 70px; color:#FFD700; font-weight: bold; }
+    .watermark { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:18px; color:white; opacity:0.5; }
   </style>
 </head>
 <body>
@@ -100,13 +42,10 @@
 GATEWAY CONTAINER LINE SURABAYA 2025</div>
     <div class="title">"Navigating The Turbulence, Cruising The Opportunities"</div>
     <div class="company" id="companyName">Nama Perusahaan</div>
-    <div class="table-box">
-      <div class="table-number" id="tableNumber">0</div>
-    </div>
+    <div class="table-box"><div class="table-number" id="tableNumber">0</div></div>
   </div>
   <div class="watermark">Tim Bjir</div>
 
-  <!-- ===== Real-time Firebase Listener ===== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -131,9 +70,24 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
     function updateDisplay(company, table) {
       if (company) companyEl.textContent = company.toUpperCase();
       if (table)   tableEl.textContent   = table;
+
+      // === Kirim ke Google Form setiap update ===
+      try {
+        const formData = new FormData();
+        formData.append("entry.712340243", company);
+        formData.append("entry.1805472999", table);
+
+        fetch("https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse", {
+          method: "POST",
+          mode: "no-cors",
+          body: formData
+        });
+      } catch (err) {
+        console.warn("Gagal kirim ke Google Form:", err);
+      }
     }
 
-    // Ambil langsung dari URL (jika ada)
+    // Ambil langsung dari URL QR Code
     try {
       const usp = new URLSearchParams(location.search || "");
       const qCompany = usp.get("company");
@@ -143,31 +97,16 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       }
     } catch {}
 
-    // Dengarkan entri terakhir di Firebase (real-time)
+    // Dengarkan entri dari Firebase (real-time)
     const scannedRef = ref(db, "scanned");
     onChildAdded(scannedRef, (snap) => {
       const data = snap.val() || {};
       const company = data.company || "Nama Perusahaan";
-      const table = data.table || "0";
+      const table   = data.table || "0";
       updateDisplay(company, table);
-
-      // === Optional: kirim ke Google Form (bisa dipakai untuk absensi) ===
-      try {
-        const formData = new FormData();
-        formData.append("entry.712340243", company);
-        formData.append("entry.1805472999", table);
-
-        fetch("https://docs.google.com/forms/u/0/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse", {
-          method: "POST",
-          mode: "no-cors",
-          body: formData
-        });
-      } catch (err) {
-        console.warn("Gagal kirim ke Google Form:", err);
-      }
     });
 
-    // === Fallback untuk scanner manual (tanpa Firebase) ===
+    // === Scanner manual (fallback tanpa Firebase) ===
     let buffer = "";
     const allowed = /[0-9A-Za-zÀ-ž .,_\-@#:/?&=%+]/;
     document.addEventListener("keydown", (e) => {
@@ -181,7 +120,6 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       if (e.key.length !== 1) return;
       if (allowed.test(e.key)) buffer += e.key;
     });
-
     document.addEventListener("paste", (e) => {
       const text = (e.clipboardData || window.clipboardData).getData("text");
       const parsed = parseScanToParams(text);
@@ -217,3 +155,4 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
   </script>
 </body>
 </html>
+  
