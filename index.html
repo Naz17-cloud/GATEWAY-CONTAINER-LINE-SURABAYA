@@ -93,7 +93,7 @@
     <div class="team">Team Event</div>
   </div>
 
-  <!-- Firebase -->
+  <!-- Firebase + Google Form -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -111,6 +111,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+
+    const FORM_URL = "https://docs.google.com/forms/d/e/YOUR_FORM_ID/formResponse"; // <-- Ganti dengan Form action URL
 
     const companyEl = document.getElementById('company');
     const tableNumEl = document.getElementById('table-number');
@@ -133,11 +135,27 @@
     }
 
     function logScan(company, table) {
-      const id = Date.now(); // unik
+      const id = Date.now();
       set(ref(db, 'scanned/' + id), {
         company: normalizeCompany(company),
         table,
         time: new Date().toISOString()
+      });
+    }
+
+    function sendToGoogleForm(company, table) {
+      const formData = new FormData();
+      formData.append("entry.712340243", company);
+      formData.append("entry.1805472999", table);
+
+      fetch(FORM_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: formData
+      }).then(() => {
+        console.log("Data terkirim ke Google Form!");
+      }).catch(err => {
+        console.error("Gagal kirim form:", err);
       });
     }
 
@@ -155,6 +173,7 @@
       if (company && table) {
         show(company, table);
         logScan(company, table);
+        sendToGoogleForm(company, table);
       }
     }
 
