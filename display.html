@@ -106,10 +106,10 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
   </div>
   <div class="watermark">Tim Bjir</div>
 
-  <!-- ===== Real-time 2 Device (Firebase Listener) + Submit ke Google Form ===== -->
+  <!-- ===== Real-time Firebase Listener ===== -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAw6mvIFe6xdZAejTJv3Jo8-fvBz3Av4K4",
@@ -133,6 +133,7 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       if (table)   tableEl.textContent   = table;
     }
 
+    // Ambil langsung dari URL (jika ada)
     try {
       const usp = new URLSearchParams(location.search || "");
       const qCompany = usp.get("company");
@@ -142,15 +143,15 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       }
     } catch {}
 
+    // Dengarkan entri terakhir di Firebase (real-time)
     const scannedRef = ref(db, "scanned");
-    onValue(scannedRef, (snap) => {
+    onChildAdded(scannedRef, (snap) => {
       const data = snap.val() || {};
       const company = data.company || "Nama Perusahaan";
       const table = data.table || "0";
-
       updateDisplay(company, table);
 
-      // === Kirim data ke Google Form ===
+      // === Optional: kirim ke Google Form (bisa dipakai untuk absensi) ===
       try {
         const formData = new FormData();
         formData.append("entry.712340243", company);
@@ -166,7 +167,7 @@ GATEWAY CONTAINER LINE SURABAYA 2025</div>
       }
     });
 
-    // === Fallback untuk scanner yang input langsung ===
+    // === Fallback untuk scanner manual (tanpa Firebase) ===
     let buffer = "";
     const allowed = /[0-9A-Za-zÀ-ž .,_\-@#:/?&=%+]/;
     document.addEventListener("keydown", (e) => {
