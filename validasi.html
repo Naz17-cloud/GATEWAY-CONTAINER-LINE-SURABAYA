@@ -120,7 +120,11 @@
       transition: all 0.3s ease;
     }
     #btnSubmit:hover { background: linear-gradient(45deg, #FFC107, #FFB300); transform: scale(1.03); }
+    #status { color:#fff; margin-top:10px; font-weight:600; }
   </style>
+
+  <!-- Muat data perwakilan dari file JS kamu (global) -->
+  <script src="companies.js"></script>
 </head>
 <script src="protect.js"></script>
 <body>
@@ -137,15 +141,20 @@
       <select id="perwakilan"></select>
       <input type="text" id="manualInput" placeholder="Masukkan nama pengganti...">
       <button id="btnSubmit">✅ Konfirmasi Hadir</button>
+      <div id="status"></div>
     </div>
     <div class="team">Team Event</div>
   </div>
 
-  <!-- Firebase -->
+  <!-- Firebase + Logika -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, onChildAdded, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getDatabase, ref, onChildAdded, set, query, limitToLast } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
+    /* ===============================
+       KONFIGURASI
+    ================================ */
+    // --- Firebase ---
     const firebaseConfig = {
       apiKey: "AIzaSyAw6mvIFe6xdZAejTJv3Jo8-fvBz3Av4K4",
       authDomain: "scanner-gathering.firebaseapp.com",
@@ -157,6 +166,15 @@
       measurementId: "G-HW6Y6VN817"
     };
 
+    // --- Google Form (ISI FORM_ID kamu!) ---
+    const GFORM_URL = "https://docs.google.com/forms/d/e/FORM_ID_KAMU/formResponse";
+    const GFORM_COMPANY_ENTRY = "entry.712340243";   // Perusahaan
+    const GFORM_TABLE_ENTRY   = "entry.1805472999";  // Nomor Meja
+    const GFORM_REP_ENTRY     = null;                // <-- isi entry id kolom Nama Perwakilan jika ada, mis: "entry.123456789"
+
+    /* ===============================
+       INISIALISASI
+    ================================ */
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
@@ -165,45 +183,59 @@
     const inputPanel = document.getElementById("input-panel");
     const perwakilanSelect = document.getElementById("perwakilan");
     const manualInput = document.getElementById("manualInput");
+    const btnSubmit = document.getElementById("btnSubmit");
+    const statusEl = document.getElementById("status");
 
-    function normalizeCompany(name) {
-      return (name || '').trim().toUpperCase();
-    }
+    const normalizeCompany = (name) => (name || "").replace(/\s+/g, " ").trim().toUpperCase();
 
+    // Ambil map perusahaan dari global JS atau JSON (fallback)
     async function loadCompanies() {
-      try {
-        const res = await fetch('companies.json', { cache: 'no-store' });
-        if (!res.ok) return {};
-        return await res.json();
-      } catch { return {}; }
+      const pickGlobal = () =>
+        window.COMPANY_DATA || window.COMPANY_MAP || window.COMPANIES || window.companies || null;
+
+      let data = pickGlobal();
+      if (!data) {
+        try {
+          const res = await fetch("companies.json", { cache: "no-store" });
+          if (res.ok) data = await res.json();
+        } catch { /* ignore */ }
+      }
+      if (!data || typeof data !== "object") return {};
+
+      // Normalisasi key -> UPPERCASE
+      const map = {};
+      Object.keys(data).forEach(k => {
+        map[normalizeCompany(k)] = data[k];
+      });
+      return map;
     }
 
-    // Dengarkan scan terbaru dari index.html
-    const scanRef = ref(db, 'scanned');
-    let lastKeyHandled = null;
+    // Ekstrak maksimal 2 perwakilan dari berbagai bentuk struktur
+    function extractTwoRepresentatives(record) {
+      if (!record) return [];
+      let list = [];
 
-    onChildAdded(scanRef, async (snapshot) => {
-      if (snapshot.key === lastKeyHandled) return;
-      lastKeyHandled = snapshot.key;
+      if (Array.isArray(record)) list = record;
+      if (record && Array.isArray(record.representatives)) list = record.representatives;
+      if (record && Array.isArray(record.reps)) list = record.reps;
 
-      const data = snapshot.val();
-      if (!data) return;
+      // Dukungan field tunggal
+      ["rep1","rep2","perwakilan1","perwakilan2","representative1","representative2","nama1","nama2"]
+        .forEach(k => { if (record && record[k]) list.push(record[k]); });
 
-      const company = normalizeCompany(data.company || '');
-      const table = data.table || '--';
+      // Bersihkan, unik, maksimal 2
+      const cleaned = [...new Set(list.map(v => String(v || "").trim()).filter(Boolean))];
+      return cleaned.slice(0, 2);
+    }
 
-      companyEl.textContent = company;
-      tableEl.textContent = table;
-      inputPanel.style.display = "block";
-
-      // Muat daftar perwakilan dari companies.json
+    async function populateRepresentatives(companyName) {
       perwakilanSelect.innerHTML = "";
       manualInput.style.display = "none";
       manualInput.value = "";
 
       const companies = await loadCompanies();
-      const record = companies[company] || {};
-      const reps = Array.isArray(record.representatives) ? record.representatives : [];
+      const record = companies[normalizeCompany(companyName)] || null;
+      const reps = extractTwoRepresentatives(record);
 
       reps.forEach(nama => {
         const opt = document.createElement("option");
@@ -212,35 +244,83 @@
         perwakilanSelect.appendChild(opt);
       });
 
-      const opt = document.createElement("option");
-      opt.value = "LAINNYA";
-      opt.textContent = "➕ Nama Lain (Manual)";
-      perwakilanSelect.appendChild(opt);
+      // Tambahkan satu opsi manual saja
+      const optManual = document.createElement("option");
+      optManual.value = "LAINNYA";
+      optManual.textContent = "➕ Nama Lain (Manual)";
+      perwakilanSelect.appendChild(optManual);
 
       perwakilanSelect.onchange = () => {
         manualInput.style.display = (perwakilanSelect.value === "LAINNYA") ? "block" : "none";
       };
+    }
 
-      document.getElementById("btnSubmit").onclick = async () => {
-        let namaDipilih = perwakilanSelect.value;
-        if (namaDipilih === "LAINNYA") {
-          namaDipilih = (manualInput.value || '').trim();
-          if (!namaDipilih) {
-            alert("⚠️ Harap masukkan nama pengganti!");
-            return;
-          }
+    // Tulis log ke Firebase
+    function logPresenceToFirebase({ company, table, nama, status }) {
+      return set(ref(db, "kehadiran/" + Date.now()), {
+        company: normalizeCompany(company),
+        table,
+        nama,
+        status,
+        time: new Date().toISOString()
+      });
+    }
+
+    // Kirim ke Google Form (Spreadsheet)
+    function submitToGoogleForm({ company, table, nama }) {
+      if (!GFORM_URL.includes("FORM_ID")) {
+        // Jika FORM_ID belum diisi, tetap lanjut tanpa error fatal.
+        return Promise.resolve();
+      }
+      const fd = new FormData();
+      fd.append(GFORM_COMPANY_ENTRY, normalizeCompany(company));
+      fd.append(GFORM_TABLE_ENTRY, table);
+      if (GFORM_REP_ENTRY) fd.append(GFORM_REP_ENTRY, nama);
+
+      return fetch(GFORM_URL, { method: "POST", body: fd, mode: "no-cors" });
+    }
+
+    // Tampilkan data scan ke layar & buka panel input
+    function showScanOnUI(company, table) {
+      companyEl.textContent = normalizeCompany(company);
+      tableEl.textContent = table || "--";
+      inputPanel.style.display = "block";
+    }
+
+    // Dengarkan hanya scan TERBARU (cepat & tidak duplikat)
+    const scanRef = query(ref(db, "scanned"), limitToLast(1));
+    onChildAdded(scanRef, async (snapshot) => {
+      const data = snapshot.val() || {};
+      const company = normalizeCompany(data.company || "");
+      const table = String(data.table || "--");
+
+      showScanOnUI(company, table);
+      await populateRepresentatives(company);
+
+      statusEl.textContent = ""; // reset status
+      btnSubmit.disabled = false;
+
+      btnSubmit.onclick = async () => {
+        let nama = perwakilanSelect.value;
+        if (nama === "LAINNYA") {
+          nama = (manualInput.value || "").trim();
+          if (!nama) { alert("⚠️ Harap masukkan nama pengganti!"); return; }
         }
 
-        const status = reps.includes(namaDipilih) ? "VALID" : "PENGGANTI";
+        const repsNow = Array.from(perwakilanSelect.options).map(o => o.value).filter(v => v !== "LAINNYA");
+        const status = repsNow.includes(nama) ? "VALID" : "PENGGANTI";
 
-        await set(ref(db, 'kehadiran/' + Date.now()), {
-          company: company,
-          table: table,
-          nama: namaDipilih,
-          status: status,
-          time: new Date().toISOString()
-        });
-        alert(`✅ Kehadiran tercatat: ${namaDipilih} (${status})`);
+        btnSubmit.disabled = true;
+        statusEl.textContent = "Mencatat kehadiran...";
+
+        try {
+          await logPresenceToFirebase({ company, table, nama, status });
+          await submitToGoogleForm({ company, table, nama });
+          statusEl.textContent = "✅ Kehadiran berhasil dicatat!";
+        } catch (e) {
+          statusEl.textContent = "❌ Gagal mencatat kehadiran.";
+          btnSubmit.disabled = false;
+        }
       };
     });
   </script>
