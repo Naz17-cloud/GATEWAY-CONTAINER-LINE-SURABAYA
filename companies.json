@@ -1,14 +1,7 @@
 {
-  "SUNGGONG LOGISTICS": {
-    "table": "VIP",
-    "representatives": ["Joko", "Widodo"]
-  },
-  "FORIN LOGISTICS": {
-    "table": "10",
-    "representatives": ["Prabowo", "Subiantoro"]
-  },
-  "PUMA SUB": {
-    "table": "23",
-    "representatives": ["Intans", "Segara"]
-  }
+  "SUNGGONG LOGISTICS": ["Joko", "Widodo"],
+  "FORIN LOGISTIK": ["Prabowo", "Subiantoro"],
+  "PUMA SUB": ["Intans", "Segara"],
+  "LINK PACIFIC INDONUSA": ["NANAS"]
+  "LOGWIN AIR AND OCEAN INDONESIA": ["NUNIS"]
 }
