@@ -1,10 +1,4 @@
-// Data recipient per company
-const recipientData = {
-  "SUNGGONG": ["Joko", "Widodo"],
-  "FORIN LOGISTICS": ["Prabowo", "Subiantoro"],
-  "PUMA SUB": ["Intans", "Segara"]
-};
-
+}
 // Ambil parameter dari URL
 const urlParams = new URLSearchParams(window.location.search);
 const company = urlParams.get("company");
