@@ -1,4 +1,4 @@
-}
+{
 // Ambil parameter dari URL
 const urlParams = new URLSearchParams(window.location.search);
 const company = urlParams.get("company");
