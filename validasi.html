@@ -164,7 +164,8 @@
     const GFORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
     const GFORM_COMPANY_ENTRY = "entry.712340243";
     const GFORM_TABLE_ENTRY   = "entry.1805472999";
-    const GFORM_REP_ENTRY     = "entry.123456789"; // Ganti dengan entry ID kolom perwakilan
+    const GFORM_REP1_ENTRY    = "entry.1730041639";
+    const GFORM_REP2_ENTRY    = "entry.403681205";
 
     // === Inisialisasi ===
     const app = initializeApp(firebaseConfig);
@@ -233,7 +234,8 @@
       const fd = new FormData();
       fd.append(GFORM_COMPANY_ENTRY, normalizeCompany(company));
       fd.append(GFORM_TABLE_ENTRY, table);
-      fd.append(GFORM_REP_ENTRY, nama);
+      fd.append(GFORM_REP1_ENTRY, nama);
+      fd.append(GFORM_REP2_ENTRY, nama);
 
       return fetch(GFORM_URL, { method: "POST", body: fd, mode: "no-cors" });
     }
