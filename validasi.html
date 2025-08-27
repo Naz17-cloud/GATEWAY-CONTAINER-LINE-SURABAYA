@@ -122,11 +122,8 @@
     #btnSubmit:hover { background: linear-gradient(45deg, #FFC107, #FFB300); transform: scale(1.03); }
     #status { color:#fff; margin-top:10px; font-weight:600; }
   </style>
-
-  <!-- Muat data perwakilan dari file JS kamu (global) -->
   <script src="companies.js"></script>
 </head>
-<script src="protect.js"></script>
 <body>
   <div class="overlay">
     <h1>SELAMAT DATANG DI CUSTOMER GATHERING<br>GATEWAY CONTAINER LINE 2025</h1>
@@ -151,10 +148,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, onChildAdded, set, query, limitToLast } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    /* ===============================
-       KONFIGURASI
-    ================================ */
-    // --- Firebase ---
+    // === Konfigurasi Firebase ===
     const firebaseConfig = {
       apiKey: "AIzaSyAw6mvIFe6xdZAejTJv3Jo8-fvBz3Av4K4",
       authDomain: "scanner-gathering.firebaseapp.com",
@@ -166,15 +160,13 @@
       measurementId: "G-HW6Y6VN817"
     };
 
-    // --- Google Form (ISI FORM_ID kamu!) ---
-    const GFORM_URL = "https://docs.google.com/forms/d/e/FORM_ID_KAMU/formResponse";
-    const GFORM_COMPANY_ENTRY = "entry.712340243";   // Perusahaan
-    const GFORM_TABLE_ENTRY   = "entry.1805472999";  // Nomor Meja
-    const GFORM_REP_ENTRY     = null;                // <-- isi entry id kolom Nama Perwakilan jika ada, mis: "entry.123456789"
+    // === Google Form ===
+    const GFORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
+    const GFORM_COMPANY_ENTRY = "entry.712340243";
+    const GFORM_TABLE_ENTRY   = "entry.1805472999";
+    const GFORM_REP_ENTRY     = "entry.123456789"; // Ganti dengan entry ID kolom perwakilan
 
-    /* ===============================
-       INISIALISASI
-    ================================ */
+    // === Inisialisasi ===
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
@@ -186,46 +178,19 @@
     const btnSubmit = document.getElementById("btnSubmit");
     const statusEl = document.getElementById("status");
 
-    const normalizeCompany = (name) => (name || "").replace(/\s+/g, " ").trim().toUpperCase();
+    const normalizeCompany = (name) => (name || "").trim().toUpperCase();
 
-    // Ambil map perusahaan dari global JS atau JSON (fallback)
     async function loadCompanies() {
-      const pickGlobal = () =>
-        window.COMPANY_DATA || window.COMPANY_MAP || window.COMPANIES || window.companies || null;
-
-      let data = pickGlobal();
-      if (!data) {
+      let data = window.COMPANIES || {};
+      if (!data || typeof data !== "object") {
         try {
           const res = await fetch("companies.json", { cache: "no-store" });
           if (res.ok) data = await res.json();
-        } catch { /* ignore */ }
+        } catch {}
       }
-      if (!data || typeof data !== "object") return {};
-
-      // Normalisasi key -> UPPERCASE
       const map = {};
-      Object.keys(data).forEach(k => {
-        map[normalizeCompany(k)] = data[k];
-      });
+      Object.keys(data).forEach(k => map[normalizeCompany(k)] = data[k]);
       return map;
-    }
-
-    // Ekstrak maksimal 2 perwakilan dari berbagai bentuk struktur
-    function extractTwoRepresentatives(record) {
-      if (!record) return [];
-      let list = [];
-
-      if (Array.isArray(record)) list = record;
-      if (record && Array.isArray(record.representatives)) list = record.representatives;
-      if (record && Array.isArray(record.reps)) list = record.reps;
-
-      // Dukungan field tunggal
-      ["rep1","rep2","perwakilan1","perwakilan2","representative1","representative2","nama1","nama2"]
-        .forEach(k => { if (record && record[k]) list.push(record[k]); });
-
-      // Bersihkan, unik, maksimal 2
-      const cleaned = [...new Set(list.map(v => String(v || "").trim()).filter(Boolean))];
-      return cleaned.slice(0, 2);
     }
 
     async function populateRepresentatives(companyName) {
@@ -234,8 +199,8 @@
       manualInput.value = "";
 
       const companies = await loadCompanies();
-      const record = companies[normalizeCompany(companyName)] || null;
-      const reps = extractTwoRepresentatives(record);
+      const record = companies[normalizeCompany(companyName)] || [];
+      const reps = Array.isArray(record) ? record.slice(0,2) : [];
 
       reps.forEach(nama => {
         const opt = document.createElement("option");
@@ -244,7 +209,6 @@
         perwakilanSelect.appendChild(opt);
       });
 
-      // Tambahkan satu opsi manual saja
       const optManual = document.createElement("option");
       optManual.value = "LAINNYA";
       optManual.textContent = "➕ Nama Lain (Manual)";
@@ -255,7 +219,6 @@
       };
     }
 
-    // Tulis log ke Firebase
     function logPresenceToFirebase({ company, table, nama, status }) {
       return set(ref(db, "kehadiran/" + Date.now()), {
         company: normalizeCompany(company),
@@ -266,28 +229,22 @@
       });
     }
 
-    // Kirim ke Google Form (Spreadsheet)
     function submitToGoogleForm({ company, table, nama }) {
-      if (!GFORM_URL.includes("FORM_ID")) {
-        // Jika FORM_ID belum diisi, tetap lanjut tanpa error fatal.
-        return Promise.resolve();
-      }
       const fd = new FormData();
       fd.append(GFORM_COMPANY_ENTRY, normalizeCompany(company));
       fd.append(GFORM_TABLE_ENTRY, table);
-      if (GFORM_REP_ENTRY) fd.append(GFORM_REP_ENTRY, nama);
+      fd.append(GFORM_REP_ENTRY, nama);
 
       return fetch(GFORM_URL, { method: "POST", body: fd, mode: "no-cors" });
     }
 
-    // Tampilkan data scan ke layar & buka panel input
     function showScanOnUI(company, table) {
       companyEl.textContent = normalizeCompany(company);
       tableEl.textContent = table || "--";
       inputPanel.style.display = "block";
     }
 
-    // Dengarkan hanya scan TERBARU (cepat & tidak duplikat)
+    // Dengarkan hasil scan terbaru dari display.html
     const scanRef = query(ref(db, "scanned"), limitToLast(1));
     onChildAdded(scanRef, async (snapshot) => {
       const data = snapshot.val() || {};
@@ -297,7 +254,7 @@
       showScanOnUI(company, table);
       await populateRepresentatives(company);
 
-      statusEl.textContent = ""; // reset status
+      statusEl.textContent = "";
       btnSubmit.disabled = false;
 
       btnSubmit.onclick = async () => {
@@ -306,7 +263,6 @@
           nama = (manualInput.value || "").trim();
           if (!nama) { alert("⚠️ Harap masukkan nama pengganti!"); return; }
         }
-
         const repsNow = Array.from(perwakilanSelect.options).map(o => o.value).filter(v => v !== "LAINNYA");
         const status = repsNow.includes(nama) ? "VALID" : "PENGGANTI";
 
@@ -317,7 +273,7 @@
           await logPresenceToFirebase({ company, table, nama, status });
           await submitToGoogleForm({ company, table, nama });
           statusEl.textContent = "✅ Kehadiran berhasil dicatat!";
-        } catch (e) {
+        } catch {
           statusEl.textContent = "❌ Gagal mencatat kehadiran.";
           btnSubmit.disabled = false;
         }
