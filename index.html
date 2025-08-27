@@ -93,7 +93,7 @@
     <div class="team">Team Event</div>
   </div>
 
-  <!-- Firebase lama tetap -->
+  <!-- Firebase & Form Handling -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -115,36 +115,45 @@
     const urlParams = new URLSearchParams(window.location.search);
     const company = decodeURIComponent(urlParams.get('company') || 'PT NAMA PERUSAHAAN');
     const table = decodeURIComponent(urlParams.get('table') || '01');
+    const timestamp = new Date().toISOString();
 
+    // Tampilkan ke UI
     document.getElementById('company').textContent = company.toUpperCase();
     document.querySelector('.table-number').textContent = table;
 
-    const timestamp = new Date().toISOString();
+    // Kirim ke Firebase
     set(ref(db, 'scanned'), {
       company: company,
       table: table,
       time: timestamp
     });
 
-    const formURL = "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
-    const formData = new FormData();
-    formData.append("entry.712340243", company);
-    formData.append("entry.1805472999", table);
+    // Kirim ke Google Form (dengan delay agar tidak tertimpa)
+    setTimeout(() => {
+      const formURL = "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
+      const formData = new FormData();
+      formData.append("entry.712340243", company); // Nama perusahaan
+      formData.append("entry.1805472999", table);   // Nomor meja
 
-    fetch(formURL, {
-      method: "POST",
-      mode: "no-cors",
-      body: formData
-    });
+      // Tambahkan waktu untuk mencegah entri duplikat (gunakan entry dari form jika ada)
+      formData.append("entry.999999999", timestamp); // Ganti ini jika sudah punya field di form
+
+      fetch(formURL, {
+        method: "POST",
+        mode: "no-cors",
+        body: formData
+      });
+
+      console.log("Data dikirim ke Google Form:", company, table, timestamp);
+    }, 500);
   </script>
 
-  <!-- 🔹 Script baru untuk tangkap input scanner eksternal -->
+  <!-- Scanner keyboard input -->
   <script>
     document.addEventListener("keydown", function(e) {
       if (e.key === "Enter") {
         let scanned = window.currentScan || "";
         if (scanned.trim() !== "") {
-          // Simpan hasil scan ke localStorage → dibaca display.html
           localStorage.setItem("lastScan", scanned.trim());
           console.log("QR Scanned:", scanned.trim());
           window.currentScan = "";
