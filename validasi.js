@@ -1,9 +1,12 @@
 // ========================
 // Konfigurasi Google Form
 // ========================
-const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
+const FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
 const RECIPIENT1_FIELD = "entry.1730041639";
 const RECIPIENT2_FIELD = "entry.403681205";
+const COMPANY_FIELD = "entry.2006319974"; // opsional kalau mau kirim nama perusahaan
+const TABLE_FIELD = "entry.931928333"; // opsional kalau mau kirim nomor meja
 
 // ========================
 // Helper Functions
@@ -15,10 +18,7 @@ function getQueryParam(name) {
 
 function normalizeName(name) {
   if (!name) return "";
-  return decodeURIComponent(name)
-    .trim()
-    .replace(/\s+/g, " ")
-    .toUpperCase();
+  return decodeURIComponent(name).trim().replace(/\s+/g, " ").toUpperCase();
 }
 
 function setStatus(msg, isError = false) {
@@ -33,13 +33,15 @@ function setStatus(msg, isError = false) {
 // ========================
 // Submit ke Google Form
 // ========================
-async function submitRecipient(recipient1, recipient2) {
+async function submitRecipient(company, table, recipient1, recipient2) {
   if (window._submitted) {
     setStatus("ℹ️ Data sudah pernah dikirim untuk QR ini.");
     return;
   }
 
   const formData = new FormData();
+  formData.append(COMPANY_FIELD, company || "-");
+  formData.append(TABLE_FIELD, table || "-");
   formData.append(RECIPIENT1_FIELD, recipient1 || "-");
   formData.append(RECIPIENT2_FIELD, recipient2 || "-");
 
@@ -47,7 +49,7 @@ async function submitRecipient(recipient1, recipient2) {
     await fetch(FORM_URL, {
       method: "POST",
       body: formData,
-      mode: "no-cors"
+      mode: "no-cors",
     });
     setStatus("✅ Data recipient berhasil dicatat!");
     window._submitted = true;
@@ -61,19 +63,21 @@ async function submitRecipient(recipient1, recipient2) {
       form.method = "POST";
       form.style.display = "none";
 
-      const in1 = document.createElement("input");
-      in1.name = RECIPIENT1_FIELD;
-      in1.value = recipient1 || "-";
+      const addInput = (name, value) => {
+        const input = document.createElement("input");
+        input.name = name;
+        input.value = value || "-";
+        form.appendChild(input);
+      };
 
-      const in2 = document.createElement("input");
-      in2.name = RECIPIENT2_FIELD;
-      in2.value = recipient2 || "-";
+      addInput(COMPANY_FIELD, company);
+      addInput(TABLE_FIELD, table);
+      addInput(RECIPIENT1_FIELD, recipient1);
+      addInput(RECIPIENT2_FIELD, recipient2);
 
-      form.appendChild(in1);
-      form.appendChild(in2);
       document.body.appendChild(form);
-
       form.submit();
+
       setStatus("✅ Data recipient dicatat (via fallback form).");
       window._submitted = true;
     } catch (e) {
@@ -91,8 +95,12 @@ window.onload = function () {
   const companyKey = normalizeName(companyRaw);
 
   // Tampilkan company & table
-  document.getElementById("companyName").innerText = "Company: " + (companyRaw || "-");
-  document.getElementById("tableNumber").innerText = "Table: " + table;
+  if (document.getElementById("companyName"))
+    document.getElementById("companyName").innerText =
+      "Company: " + (companyRaw || "-");
+
+  if (document.getElementById("tableNumber"))
+    document.getElementById("tableNumber").innerText = "Table: " + table;
 
   // Pastikan recipients sudah ada
   if (!window.recipients || Object.keys(window.recipients).length === 0) {
@@ -112,14 +120,20 @@ window.onload = function () {
     const recipient1 = found[0] || "-";
     const recipient2 = found[1] || "-";
 
-    document.getElementById("recipient1").innerText = "Recipient 1: " + recipient1;
-    document.getElementById("recipient2").innerText = "Recipient 2: " + recipient2;
+    if (document.getElementById("recipient1"))
+      document.getElementById("recipient1").innerText =
+        "Recipient 1: " + recipient1;
+    if (document.getElementById("recipient2"))
+      document.getElementById("recipient2").innerText =
+        "Recipient 2: " + recipient2;
 
     setStatus("🔄 Mengirim data ke Google Form...");
-    submitRecipient(recipient1, recipient2);
+    submitRecipient(companyRaw, table, recipient1, recipient2);
   } else {
-    document.getElementById("recipient1").innerText = "Recipient 1: -";
-    document.getElementById("recipient2").innerText = "Recipient 2: -";
+    if (document.getElementById("recipient1"))
+      document.getElementById("recipient1").innerText = "Recipient 1: -";
+    if (document.getElementById("recipient2"))
+      document.getElementById("recipient2").innerText = "Recipient 2: -";
     setStatus("⚠️ Data recipient tidak ditemukan!", true);
   }
 };
