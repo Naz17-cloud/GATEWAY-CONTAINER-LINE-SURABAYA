@@ -1,4 +1,4 @@
-{
+window.recipients = {
   "SUNGGONG LOGISTICS": ["Joko", "Widodo"],
   "FORIN LOGISTIK": ["Prabowo", "Subiantoro"],
   "PUMA SUB": ["Intans", "Segara"],
