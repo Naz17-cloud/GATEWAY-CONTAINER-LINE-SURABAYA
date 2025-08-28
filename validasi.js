@@ -1,6 +1,3 @@
-// ========================
-// Konfigurasi Google Form
-// ========================
 const FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLScU5G2UO2TKcVffDQEjSZdQuXfq43Ldgfq-lJW9DedgRmQbqg/formResponse";
 const RECIPIENT1_FIELD = "entry.1730041639";
